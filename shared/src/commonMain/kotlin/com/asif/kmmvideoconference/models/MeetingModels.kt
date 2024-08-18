@@ -32,6 +32,12 @@ data class Meeting(
 data class AttendeeResponse(
     val attendee: Attendee
 )
+@Serializable
+data class JoinMeetingRequest(
+    val meetingId: String,
+    val attendeeName: String
+)
+
 
 @Serializable
 data class Attendee(

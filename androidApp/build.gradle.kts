@@ -54,7 +54,11 @@ dependencies {
     // Ktor for networking
     implementation("io.ktor:ktor-client-core:2.0.3")
     implementation("io.ktor:ktor-client-cio:2.0.3") // or another engine like OkHttp
-    implementation("io.ktor:ktor-client-serialization:2.0.3")
+    // Kotlinx serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1") // Make sure this matches your serialization plugin
+    implementation("io.ktor:ktor-client-content-negotiation:2.0.3")
+    // JSON serialization support
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.0.3")
 
     // Add this if you're using Ktor's utilities, including `IOException`
     implementation("io.ktor:ktor-utils:2.0.3")

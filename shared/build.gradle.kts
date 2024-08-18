@@ -70,4 +70,5 @@ dependencies {
     implementation("io.ktor:ktor-client-serialization:2.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
     implementation("software.aws.chimesdk:amazon-chime-sdk:0.23.0")
+    implementation("io.ktor:ktor-client-content-negotiation:2.0.3")
 }

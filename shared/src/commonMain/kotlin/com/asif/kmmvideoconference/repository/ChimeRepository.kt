@@ -1,13 +1,17 @@
 package com.asif.kmmvideoconference.repository
 
 import co.touchlab.kermit.Logger
+import com.asif.kmmvideoconference.models.JoinMeetingRequest
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.util.InternalAPI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -46,9 +50,18 @@ class ChimeRepository(private val httpClient: HttpClient) {
     suspend fun joinMeeting(meetingId: String, attendeeName: String): String? = withContext(Dispatchers.Default) {
         try {
             logger.d { "Attempting to join meeting: $meetingId with attendee: $attendeeName" }
+
+            // Create the request object and serialize it to JSON
+            val requestBody = JoinMeetingRequest(meetingId, attendeeName)
+            val jsonBody = Json.encodeToString(requestBody)
+
+            // Perform the POST request with the serialized JSON string
             val response = httpClient.post("https://chimebackend-c74fc39330b2.herokuapp.com/joinMeeting") {
-                body = mapOf("meetingId" to meetingId, "attendeeName" to attendeeName)
+                contentType(ContentType.Application.Json)  // Manually set the content type
+                setBody(jsonBody)  // Set the body as the serialized JSON string
             }
+
+            // Handle the response
             val rawResponse = response.bodyAsText()
             logger.d { "Raw response: $rawResponse" }
 

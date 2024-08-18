@@ -17,6 +17,10 @@ import com.asif.kmmvideoconference.android.viewmodels.MeetingViewModel
 import com.asif.kmmvideoconference.repository.ChimeRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
+
 
 class MainActivity : ComponentActivity() {
     // Provide the ViewModel with the factory
@@ -48,7 +52,15 @@ class MainActivity : ComponentActivity() {
         }
 
         // Initialize HttpClient instance with CIO engine
-        val httpClient = HttpClient(CIO)
+        val httpClient = HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    prettyPrint = true
+                    isLenient = true
+                    ignoreUnknownKeys = true
+                })
+            }
+        }
 
         // Initialize the ChimeRepository and Context
         val repository = ChimeRepository(httpClient)
