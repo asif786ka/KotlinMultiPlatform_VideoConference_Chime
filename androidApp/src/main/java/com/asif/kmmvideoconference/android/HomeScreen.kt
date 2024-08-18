@@ -3,11 +3,13 @@ package com.asif.kmmvideoconference.android
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -17,10 +19,9 @@ import com.asif.kmmvideoconference.android.viewmodels.MeetingViewModel
 
 @Composable
 fun HomeScreen(navController: NavHostController, viewModel: MeetingViewModel) {
-    // Collect the state of attendees from the ViewModel
-    val meetingId = EventAttributeName.attendeeId
+    val loading by viewModel.loading.collectAsState()
+    val meetingId by viewModel.meetingId.collectAsState()
 
-    // Layout for the home screen
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -28,36 +29,35 @@ fun HomeScreen(navController: NavHostController, viewModel: MeetingViewModel) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Button to create a new meeting
-        Button(
-            onClick = { viewModel.createMeeting() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primary)
-        ) {
-            Text(text = "Create Meeting")
-        }
-
-        // Display the meeting ID if available
-        meetingId.let {
-            Text(text = "Meeting ID: $it", modifier = Modifier.padding(top = 16.dp))
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Button to navigate to the MeetingScreen
+        if (loading) {
+            CircularProgressIndicator() // Show loading indicator
+        } else {
             Button(
-                onClick = { navController.navigate("meeting") },
+                onClick = { viewModel.createMeeting() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.secondary)
             ) {
-                Text(text = "Go to Meeting")
+                Text(text = "Create Meeting")
             }
-        }
 
-        // Display any error messages from the ViewModel
-        viewModel.error.collectAsState().value?.let { error ->
-            Text(text = "Error: $error", color = MaterialTheme.colorScheme.error)
+
+            meetingId.let {
+                Text(text = "Meeting ID: $it", modifier = Modifier.padding(top = 16.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        navController.navigate("meeting/${meetingId}")
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text(text = "Go to Join Meeting")
+                }
+            }
         }
     }
 }
+

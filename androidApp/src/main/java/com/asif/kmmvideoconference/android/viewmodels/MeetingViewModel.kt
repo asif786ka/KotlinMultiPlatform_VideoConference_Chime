@@ -3,7 +3,6 @@ package com.asif.kmmvideoconference.android.viewmodels
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.amazonaws.services.chime.sdk.meetings.analytics.EventAttributeName
 import com.amazonaws.services.chime.sdk.meetings.audiovideo.AudioVideoFacade
 import com.amazonaws.services.chime.sdk.meetings.audiovideo.video.DefaultVideoRenderView
 import com.amazonaws.services.chime.sdk.meetings.audiovideo.video.VideoTileObserver
@@ -15,14 +14,10 @@ import com.asif.kmmvideoconference.models.Attendee
 import com.asif.kmmvideoconference.models.JoinMeetingResponse
 import com.asif.kmmvideoconference.models.MeetingFeatures
 import com.asif.kmmvideoconference.repository.ChimeRepository
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import io.ktor.utils.io.errors.IOException
 import kotlinx.serialization.json.Json
-
 
 class MeetingViewModel(private val repository: ChimeRepository, private val context: Context) : ViewModel(),
     VideoTileObserver {
@@ -30,6 +25,10 @@ class MeetingViewModel(private val repository: ChimeRepository, private val cont
     // StateFlow for attendees
     private val _attendees = MutableStateFlow<List<Attendee>>(emptyList())
     val attendees: StateFlow<List<Attendee>> = _attendees
+
+    // StateFlow for meeting
+    private val _meetingId = MutableStateFlow<String?>(null)
+    val meetingId: StateFlow<String?> = _meetingId
 
     // StateFlow for selected attendee
     private val _selectedAttendee = MutableStateFlow<Attendee?>(null)
@@ -63,12 +62,12 @@ class MeetingViewModel(private val repository: ChimeRepository, private val cont
             _loading.value = true
             _error.value = null // Reset error state
             try {
-                val meetingResponse: HttpResponse = repository.createMeeting()
-                // Initialize the meeting session here and set the audioVideoFacade
-                initializeMeetingSession(meetingResponse)
-                _attendees.value = listOf(Attendee("local", "true")) // Add local attendee as an example
-            } catch (e: IOException) {
-                _error.value = "Network error: ${e.message}"
+                val meetingId = repository.createMeeting()
+                if (meetingId != null) {
+                    _meetingId.value = meetingId // Add local attendee as an example
+                } else {
+                    _error.value = "Failed to create meeting"
+                }
             } catch (e: Exception) {
                 _error.value = "An error occurred: ${e.message}"
             } finally {
@@ -83,12 +82,13 @@ class MeetingViewModel(private val repository: ChimeRepository, private val cont
             _loading.value = true
             _error.value = null // Reset error state
             try {
-                val meetingResponse: HttpResponse = repository.joinMeeting(meetingId, attendeeName)
-                // Initialize the meeting session here and set the audioVideoFacade
-                initializeMeetingSession(meetingResponse)
-                _attendees.value += Attendee(attendeeName, "false")
-            } catch (e: IOException) {
-                _error.value = "Network error: ${e.message}"
+                val attendeeId = repository.joinMeeting(meetingId, attendeeName)
+                if (attendeeId != null) {
+                    _attendees.value += Attendee(attendeeId, "false")
+                    initializeMeetingSession(meetingId) // Initialize the meeting session after successfully joining
+                } else {
+                    _error.value = "Failed to join meeting"
+                }
             } catch (e: Exception) {
                 _error.value = "An error occurred: ${e.message}"
             } finally {
@@ -98,10 +98,10 @@ class MeetingViewModel(private val repository: ChimeRepository, private val cont
     }
 
     // Function to initialize the meeting session and set the AudioVideoFacade
-    private suspend fun initializeMeetingSession(meetingResponse: HttpResponse) {
+    private suspend fun initializeMeetingSession(meetingId: String) {
         try {
             // Create the meeting session using the response and set the AudioVideoFacade
-            val meetingSession = createMeetingSession(meetingResponse)
+            val meetingSession = createMeetingSession(meetingId)
             audioVideoFacade = meetingSession?.audioVideo
             audioVideoFacade?.addVideoTileObserver(this)
         } catch (e: Exception) {
@@ -127,7 +127,7 @@ class MeetingViewModel(private val repository: ChimeRepository, private val cont
     }
 
     override fun onVideoTileSizeChanged(tileState: VideoTileState) {
-        //To do
+        // Implement handling for video tile size change
     }
 
     // Function to bind a video tile to a DefaultVideoRenderView
@@ -185,47 +185,38 @@ class MeetingViewModel(private val repository: ChimeRepository, private val cont
         }
     }
 
-    private suspend fun createMeetingSession(meetingResponse: HttpResponse): MeetingSession? {
-        // Convert the HttpResponse to a JSON string (assuming the response is in JSON format)
-        val jsonResponse = meetingResponse.bodyAsText()
-
+    private suspend fun createMeetingSession(meetingId: String): MeetingSession? {
         return try {
-            // Parse the JSON response into the expected data structure
-            val joinMeetingResponse = Json.decodeFromString<JoinMeetingResponse>(jsonResponse)
+            // Normally, you would obtain these details from the backend response
+            // Here we assume the meeting details and attendee details are already available
 
-            // Extract meeting information
-            val meetingResp = joinMeetingResponse.joinInfo.meetingResponse.meeting
-            val meetingId = meetingResp.MeetingId
-            val externalMeetingId = meetingResp.ExternalMeetingId
-            val mediaPlacement = meetingResp.MediaPlacement
-            val mediaRegion = meetingResp.MediaRegion
-            val meetingFeatures = meetingResp.MeetingFeatures?.let {
-                MeetingFeatures(it.video, it.content)
-            }
-
-            // Create the AWS Meeting object
             val meeting = Meeting(
-                externalMeetingId,
-                MediaPlacement("", "", "", ""),
-                mediaRegion,
-                meetingId,
-                com.amazonaws.services.chime.sdk.meetings.session.MeetingFeatures()
+                ExternalMeetingId = "externalMeetingId",  // You need to replace this with actual external meeting ID
+                MediaPlacement = MediaPlacement(
+                    AudioFallbackUrl = "audioFallbackUrl", // Replace with actual URL
+                    AudioHostUrl = "audioHostUrl", // Replace with actual URL
+                    SignalingUrl = "signalingUrl", // Replace with actual URL
+                    TurnControlUrl = "turnControlUrl" // Replace with actual URL
+                ),
+                MediaRegion = "us-east-1", // Replace with actual media region
+                MeetingId = meetingId,
+                MeetingFeatures = MeetingFeatures()// Pass the meeting ID received from the backend
             )
 
-            // Extract attendee information and create the AWS Attendee object
-            val attendeeResp = Attendee(
-                joinMeetingResponse.joinInfo.attendeeResponse.attendee.AttendeeId,
-                joinMeetingResponse.joinInfo.attendeeResponse.attendee.ExternalUserId
+            val attendee = com.amazonaws.services.chime.sdk.meetings.session.Attendee(
+                AttendeeId = "attendeeId", // Replace with actual attendee ID
+                ExternalUserId = "externalUserId", // Replace with actual external user ID
+                JoinToken  = "joinToken" // Replace with actual join token
             )
 
             // Create the MeetingSessionConfiguration
             val meetingSessionConfiguration = MeetingSessionConfiguration(
                 CreateMeetingResponse(meeting),
-                CreateAttendeeResponse(com.amazonaws.services.chime.sdk.meetings.session.Attendee(attendeeResp.AttendeeId, attendeeResp.ExternalUserId, "" )),
+                CreateAttendeeResponse(attendee),
                 ::urlRewriter
             )
 
-            // Initialize the DefaultMeetingSession
+            // Create the DefaultMeetingSession
             DefaultMeetingSession(meetingSessionConfiguration, ConsoleLogger(LogLevel.DEBUG), context)
         } catch (exception: Exception) {
             _error.value = "Failed to create meeting session: ${exception.message}"

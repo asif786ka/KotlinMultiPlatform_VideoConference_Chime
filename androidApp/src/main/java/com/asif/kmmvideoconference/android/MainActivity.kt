@@ -64,7 +64,10 @@ class MainActivity : ComponentActivity() {
             // Setup navigation using NavHost
             NavHost(navController = navController, startDestination = "home") {
                 composable("home") { HomeScreen(navController, meetingViewModel) } // HomeScreen is the start screen
-                composable("meeting") { MeetingScreen(meetingViewModel) } // Navigate to MeetingScreen
+                composable("meeting/{meetingId}") { backStackEntry ->
+                    val meetingId = backStackEntry.arguments?.getString("meetingId")
+                    MeetingScreen(meetingViewModel, meetingId) // Navigate to MeetingScreen with meetingId
+                }
             }
         }
     }
