@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                 composable("home") { HomeScreen(navController, meetingViewModel) } // HomeScreen is the start screen
                 composable("meeting/{meetingId}") { backStackEntry ->
                     val meetingId = backStackEntry.arguments?.getString("meetingId")
-                    MeetingScreen(meetingViewModel, meetingId) // Navigate to MeetingScreen with meetingId
+                    MeetingScreen(meetingViewModel, meetingId, navController) // Navigate to MeetingScreen with meetingId
                 }
             }
         }

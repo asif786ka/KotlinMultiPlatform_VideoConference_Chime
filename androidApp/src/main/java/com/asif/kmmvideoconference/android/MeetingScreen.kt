@@ -18,19 +18,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.amazonaws.services.chime.sdk.meetings.analytics.EventAttributeName
+import androidx.navigation.NavController
 import com.amazonaws.services.chime.sdk.meetings.audiovideo.video.DefaultVideoRenderView
 import com.asif.kmmvideoconference.android.viewmodels.MeetingViewModel
 import com.asif.kmmvideoconference.models.Attendee
 
 @Composable
-fun MeetingScreen(viewModel: MeetingViewModel, meetingId: String?) {
+fun MeetingScreen(
+    viewModel: MeetingViewModel,
+    initialMeetingId: String?,
+    navController: NavController // Navigation controller passed here
+) {
     // Collect states from the ViewModel
     val isVideoEnabled = viewModel.isVideoEnabled.collectAsState().value
     val isAudioEnabled = viewModel.isAudioEnabled.collectAsState().value
     val attendees = viewModel.attendees.collectAsState().value
     val loading = viewModel.loading.collectAsState().value
     val error = viewModel.error.collectAsState().value
+    val meetingId = remember { mutableStateOf(initialMeetingId) }
     val attendeeId = remember { mutableStateOf("") }
     val meetingJoined = remember { mutableStateOf(false) } // Track if the meeting was successfully joined
 
@@ -54,7 +59,16 @@ fun MeetingScreen(viewModel: MeetingViewModel, meetingId: String?) {
             }
 
             // Meeting ID and Attendee ID input fields
-            Text(text = "Meeting ID: $meetingId", modifier = Modifier.padding(bottom = 16.dp))
+            meetingId.value?.let {
+                TextField(
+                    value = it,
+                    onValueChange = { meetingId.value = it },
+                    label = { Text("Enter Meeting ID") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             TextField(
                 value = attendeeId.value,
@@ -68,10 +82,8 @@ fun MeetingScreen(viewModel: MeetingViewModel, meetingId: String?) {
             // Join Meeting Button
             Button(
                 onClick = {
-                    meetingId?.let {
-                        viewModel.joinMeeting(it, attendeeId.value)
-                        meetingJoined.value = true // Update the state to indicate the meeting is joined
-                    }
+                    meetingId.value?.let { viewModel.joinMeeting(it, attendeeId.value) }
+                    meetingJoined.value = true // Update the state to indicate the meeting is joined
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,7 +120,12 @@ fun MeetingScreen(viewModel: MeetingViewModel, meetingId: String?) {
                     Text(if (isAudioEnabled) "Mute" else "Unmute")
                 }
                 // End the call
-                Button(onClick = { viewModel.endCall() }) {
+                Button(onClick = {
+                    viewModel.endCall()
+                    navController.navigate("home") { // Navigate back to the home screen
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    }
+                }) {
                     Text("End Call")
                 }
             }
@@ -144,10 +161,9 @@ fun VideoGrid(attendees: List<Attendee>, viewModel: MeetingViewModel) {
                     )
                 } else {
                     // Display a placeholder text if video is not available
-                    Text(text = "Attendee ${attendees[index].AttendeeId}")
+                    Text(text = "Attendee ${attendees[index].AttendeeId}", color = Color.White, modifier = Modifier.align(Alignment.Center))
                 }
             }
         }
     }
 }
-
